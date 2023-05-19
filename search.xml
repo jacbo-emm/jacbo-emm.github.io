@@ -4,6 +4,25 @@
   
     
     <entry>
+      <title>Flink任务调度</title>
+      <link href="/post/beed7eae.html"/>
+      <url>/post/beed7eae.html</url>
+      
+        <content type="html"><![CDATA[<h3 id="Flink任务调度"><a href="#Flink任务调度" class="headerlink" title="Flink任务调度"></a>Flink任务调度</h3><p><img src="/./Flink%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/Flink%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.png" alt="Flink任务调度"></p><p>​<strong>JobManagers</strong> ：JobManager有时也叫Masters，主要是协调分布式运行。他们调度任务，协调checkpoint，协调失败任务的恢复等等一个Flink集群中至少有一台JobManager节点。高可用性的集群中将会有多台JobManager节点，其中有一台是leader节点，其他的是备节点(standby)。</p><p>​**TaskManagers:**TaskManagers有时也叫Workers，TaskManager主要是执行data flow中的任务(tasks)，缓存数据以及进行数据流的交换。TaskManager在同一个JVM中以多线程的方式执行任务TaskManager提供了一定数量的处理插槽（processing slots），用于控制可以并行执行的任务数。每一个集群中至少有一个TaskManager。一个TaskManager可以同时执行多个任务（tasks）</p><ul><li>这些任务可以是同一个算子的子任务（数据并行）</li><li>这些任务可以是来自不同算子（任务并行）</li><li>这些任务可以是另一个不同应用程序（作业并行）</li></ul><p><img src="/./Flink%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/%E4%BF%AE%E6%94%B9%E5%B9%B6%E8%A1%8C%E5%BA%A6%E7%9A%84%E6%96%B9%E5%BC%8F.png" alt="修改并行度的方式"></p><p><img src="/./Flink%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/%E6%93%8D%E4%BD%9C%E9%93%BE.png" alt="操作链"></p><p>Flink 是一个分布式流处理框架，任务调度是其核心功能之一。Flink 采用基于事件驱动的调度方式，它可以根据需要在集群中部署和调度一系列可以并发执行的任务，提供了以下几种类型的任务：</p><ol><li>Job：Flink 执行的最基本单元，可用于执行离线批处理、流处理和机器学习等任务。</li><li>Task：一个 Job 由一个或多个 Task 组成，Task 依赖于操作符（Operator），每个操作符负责处理数据流中的一个子任务。</li><li>Subtask：Task 在运行时会被分割成若干个 Subtask 执行，Subtask 维护自己所处理的数据分区，是 Flink 数据并行执行的最小单元。</li></ol><p>任务调度主要包含以下两个方面：</p><ol><li>作业管理：Flink 支持以 JobManager 的形式对作业进行管理，JobManager 负责接收和解析作业提交请求，并将作业拆分成多个 Task，最后将 Task 分配给 TaskManager 执行。</li><li>资源管理：Flink 支持以 ResourceManager 的形式对集群资源进行管理，ResourceManager 负责分配和管理 TaskManager 所需的计算和内存资源。</li></ol><p>具体来说，Flink 的任务调度流程大概如下：</p><ol><li>用户通过客户端向 JobManager 提交作业。</li><li>JobManager 对作业进行解析和划分，并将作业提交给 ResourceManager。</li><li>ResourceManager 根据集群资源的使用情况，为 TaskManager 分配所需的计算和内存资源。</li><li>TaskManager 根据分配的资源启动 Subtask 执行，Subtask 会依次处理数据分区并输出结果。</li><li>JobManager 监控执行状态，如果作业失败或异常终止，则会根据用户定义的策略进行自动重启或手动恢复。</li></ol><p>总的来说，Flink 的任务调度机制是非常健壮和强大的，可以快速、高效地处理各种类型的数据流和处理任务。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> Flink学习 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Flink编程模型</title>
       <link href="/post/70157d97.html"/>
       <url>/post/70157d97.html</url>
