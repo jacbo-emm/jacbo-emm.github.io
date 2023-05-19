@@ -4,6 +4,44 @@
   
     
     <entry>
+      <title>Flink窗口联结</title>
+      <link href="/post/31b6945a.html"/>
+      <url>/post/31b6945a.html</url>
+      
+        <content type="html"><![CDATA[<h3 id="Flink窗口联结"><a href="#Flink窗口联结" class="headerlink" title="Flink窗口联结"></a>Flink窗口联结</h3><h4 id="Join"><a href="#Join" class="headerlink" title="Join"></a>Join</h4><p>​对于两条流的合并，很多情况我们并不是简单地将所有数据放在一起，而是希望根据某个字段的值将它们联结起来，“配对”去做处理。</p><p>​join都是利用window的机制，即按照指定字段和（滚动&#x2F;滑动&#x2F;会话）窗口进行inner join，先将数据缓存在Window State中，当窗口触发计算时，执行join操作；按照窗口的操作和类型可以分为：Tumbling Window Join、Sliding Window Join、Session Widnow Join。</p><p>​两条流的数据到来之后，首先会按照 key 分组、进入对应的窗口中存储；当到达窗口结束时间时，算子会先统计出窗口内两条流的数据的所有组合，也就是对两条流中的数据做一个笛卡尔积（相当于表的交叉连接，cross join），然后进行遍历，把每一对匹配的数据，作为参数(first，second)传入 JoinFunction 的.join()方法进行计算处理，得到的结果直接输出如下图所示。所以窗口中每有一对数据成功联匹配，JoinFunction 的.join()方法就会被调用一次，并输出一个结果。</p><p>其实仔细观察可以发现，窗口 join 的调用语法和我们熟悉的 SQL 中表的 join 非常相似,将每条流当作一张表，键选择器当作join的条件：</p><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> table1 t1, table2 t2 <span class="keyword">WHERE</span> t1.id <span class="operator">=</span> t2.id;</span><br></pre></td></tr></table></figure><h4 id="CoGroup"><a href="#CoGroup" class="headerlink" title="CoGroup"></a>CoGroup</h4><p>​window co-group operation 是一种将两个流中的元素按 key 和 window 分组的操作。它类似于窗口连接，但不是连接元素，而是将它们组合在一起并将用户定义的函数应用于元素组。它的用法跟 window join 非常类似，也是将两条流合并之后开窗处理匹配的元素，调用时只需要将.join()换为.coGroup()。</p><p>​coGroup 操作比窗口的 join 更加通用，不仅可以实现类似 SQL 中的“内连接”（inner join），也可以实现左外连接（left outer join）、右外连接（right outer join）和全外连接（full outer join）。事实上，窗口 join 的底层，也是通过 coGroup 来实现的。</p><h4 id="Interval-Join"><a href="#Interval-Join" class="headerlink" title="Interval Join"></a>Interval Join</h4><p>​ Interval Join是一种基于元素的时间戳应用于两个流的连接操作。间隔连接根据用户定义的间隔组合来自两个流的元素，并将用户定义的函数应用于每对匹配元素。间隔连接类似于窗口连接，但它不是使用预定义的窗口，而是使用用户定义的间隔来匹配来自两个输入流的元素。</p><p>​    在有些场景下，我们要处理的时间间隔可能并不是固定的。比如，在交易系统中，需要实时地对每一笔交易进行核验，保证两个账户转入转出数额相等，也就是所谓的“实时对账”。两次转账的数据可能写入了不同的日志流，它们的时间戳应该相差不大，所以我们可以考虑只统计一段时间内是否有出账入账的数据匹配。这时显然不应该用滚动窗口或滑动窗口来处理— —因为匹配的两个数据有可能刚好“卡在”窗口边缘两侧，于是窗口内就都没有匹配了；会话窗口虽然时间不固定，但也明显不适合这个场景。 基于时间的窗口联结已经无能为力了。</p><p>​    为了应对这样的需求，Flink 提供了一种叫作“间隔联结”（interval join）的合流操作。顾名思义，间隔联结的思路就是针对一条流的每个数据，开辟出其时间戳前后的一段时间间隔，看这期间是否有来自另一条流的数据匹配。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> Flink学习 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>Flink Backpressure</title>
+      <link href="/post/9d92a29a.html"/>
+      <url>/post/9d92a29a.html</url>
+      
+        <content type="html"><![CDATA[<h3 id="Flink-Backpressure"><a href="#Flink-Backpressure" class="headerlink" title="Flink Backpressure"></a>Flink Backpressure</h3><h4 id="Flink反压原因"><a href="#Flink反压原因" class="headerlink" title="Flink反压原因"></a>Flink反压原因</h4><p>​当数据源的生产速度过快，超过 Flink 处理速度时，Flink 会尝试缓存数据以等待处理，但如果数据源持续生产数据，缓存区将会满，这时 Flink 就需要采取反压机制来限制数据源的生产速度，直到 Flink 处理完所有已缓存的数据并释放出足够的缓存空间。这样可以避免系统崩溃或丢失数据的情况出现。反压机制通常使用一些调节流量的算法或策略，例如基于水位线的反压机制，它根据当前缓存区中的数据量动态调整数据源的生产速度，以平衡数据源和 Flink 处理速度之间的差异。</p><p><strong>系统资源</strong></p><p>​首先，需要检查机器的资源使用情况，像CPU、网络、磁盘I&#x2F;O等。如果一些资源负载过高，就可以进行下面的处理：</p><ul><li>尝试优化代码；</li><li>针对特定资源对Flink进行调优；</li><li>增加并发或者增加机器</li></ul><p><strong>垃圾回收</strong></p><p>​性能问题常常源自过长的GC时长。这种情况下可以通过打印GC日志，或者使用一些内存&#x2F;GC分析工具来定位问题。<strong>CPU&#x2F;线程瓶颈</strong></p><p>​有时候，如果一个或者一些线程造成CPU瓶颈，而此时，整个机器的CPU使用率还相对较低，这种CPU瓶颈不容易发现。比如，如果一个48核的CPU，有一个线程成为瓶颈，这时CPU的使用率只有2%。这种情况下可以考虑使用代码分析工具来定位热点线程。</p><p><strong>线程争用</strong></p><p>​跟上面CPU&#x2F;线程瓶颈问题类似，一个子任务可能由于对共享资源的高线程争用成为瓶颈。同样的，CPU分析工具对于探查这类问题也很有用。</p><p><strong>负载不均</strong></p><p>​如果瓶颈是数据倾斜造成的，可以尝试删除倾斜数据，或者通过改变数据分区策略将造成数据的key值拆分，或者也可以进行本地聚合&#x2F;预聚合。上面几项并不是全部场景。通常，解决数据处理过程中的瓶颈问题，进而消除反压，首先需要定位问题节点（瓶颈所在），然后找到原因，寻找原因，一般从检查资源过载开始。</p><h4 id="Flink网络流控和反压机制"><a href="#Flink网络流控和反压机制" class="headerlink" title="Flink网络流控和反压机制"></a>Flink网络流控和反压机制</h4><p>​网络流控是为了在上下游速度不匹配的情况下，如何防止下游出现过载</p><p>​网络流控有静态限速和动态反压两种手段</p><p>​Flink1.5以前是基于TCP流控 + bounded buffer 来实现反压</p><p>​Flink1.5之后实现了自己托管的credit-based流控机制，在应用层模拟TCP流控的机制</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> Flink学习 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>窗口和水位线案例</title>
       <link href="/post/f290c767.html"/>
       <url>/post/f290c767.html</url>
