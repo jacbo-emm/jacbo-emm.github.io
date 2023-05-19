@@ -1,0 +1,194 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Flink窗口机制 | 五条悟</title><meta name="author" content="wtw"><meta name="copyright" content="wtw"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Window Functions​	定义了窗口分配器，我们知道了数据属于哪个窗口，可以将数据收集起来了；至于收集起来到底要做什么，其实还完全没有头绪在窗口分配器之后，必须再接上一个定义窗口如何进行计算的操作，这就是所谓的“窗口函数”（window functions） 增量聚合函数​	来一条计算一条，计算的结果存放到一个对象中。 ​	ReduceFunction：最基本的聚合方式就是归约（redu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flink窗口机制">
+<meta property="og:url" content="https://jacbo-emm.github.io/post/6fca1b0d.html">
+<meta property="og:site_name" content="五条悟">
+<meta property="og:description" content="Window Functions​	定义了窗口分配器，我们知道了数据属于哪个窗口，可以将数据收集起来了；至于收集起来到底要做什么，其实还完全没有头绪在窗口分配器之后，必须再接上一个定义窗口如何进行计算的操作，这就是所谓的“窗口函数”（window functions） 增量聚合函数​	来一条计算一条，计算的结果存放到一个对象中。 ​	ReduceFunction：最基本的聚合方式就是归约（redu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png">
+<meta property="article:published_time" content="2021-04-19T11:37:47.000Z">
+<meta property="article:modified_time" content="2023-05-19T11:41:31.224Z">
+<meta property="article:author" content="wtw">
+<meta property="article:tag" content="Flink学习">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://jacbo-emm.github.io/post/6fca1b0d.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  }
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Flink窗口机制',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-05-19 19:41:31'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">4</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 生活</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/shuoshuo/"><i class="fa-fw fa fa-comments-o"></i><span> 分享</span></a></li><li><a class="site-page child" href="/photos/"><i class="fa-fw fa fa-camera-retro"></i><span> 相册</span></a></li><li><a class="site-page child" href="/music/"><i class="fa-fw fa fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/links/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于笔者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a href="/" title="五条悟"><span class="site-name">五条悟</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 生活</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/shuoshuo/"><i class="fa-fw fa fa-comments-o"></i><span> 分享</span></a></li><li><a class="site-page child" href="/photos/"><i class="fa-fw fa fa-camera-retro"></i><span> 相册</span></a></li><li><a class="site-page child" href="/music/"><i class="fa-fw fa fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/links/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于笔者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">Flink窗口机制</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-04-19T11:37:47.000Z" title="发表于 2021-04-19 19:37:47">2021-04-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-05-19T11:41:31.224Z" title="更新于 2023-05-19 19:41:31">2023-05-19</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="Flink窗口机制"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h3 id="Window-Functions"><a href="#Window-Functions" class="headerlink" title="Window Functions"></a>Window Functions</h3><p>​	定义了窗口分配器，我们知道了数据属于哪个窗口，可以将数据收集起来了；至于收集起来到底要做什么，其实还完全没有头绪在窗口分配器之后，必须再接上一个定义窗口如何进行计算的操作，这就是所谓的“窗口函数”（window functions）</p>
+<h4 id="增量聚合函数"><a href="#增量聚合函数" class="headerlink" title="增量聚合函数"></a>增量聚合函数</h4><p>​	来一条计算一条，计算的结果存放到一个对象中。</p>
+<p>​	<strong>ReduceFunction：</strong>最基本的聚合方式就是归约（reduce）窗口函数中也提供了 ReduceFunction，只要基于 WindowedStream 调用.reduce()方法，然后传入 ReduceFunction 作为参数，就可以<strong>指定以归约两个元素的方式去对窗口中数据进行聚合</strong>了。ReduceFunction 可以解决大多数归约聚合的问题，但是这个接口有一个限制，就是<strong>聚合状态的类型、输出结果的类型都必须和输入数据类型一样</strong>。</p>
+<p>​	<strong>AggregateFunction：</strong>AggregateFunction 可以看作是 ReduceFunction 的通用版本，new AggregateFunction&lt;in, acc, out&gt;</p>
+<p>​	这里有三种类型：输入类型（IN）、累加器类型（ACC）和输出类型（OUT）。</p>
+<ul>
+<li>输入类型 IN 就是输入流中元素的数据类型；</li>
+<li>累加器类型 ACC 则是我们进行聚合的中间状态类型；</li>
+<li>而输出类型当然就是最终计算结果的类型了。</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">source.map(word -&gt; Tuple2.of(word.split(<span class="string">&quot;,&quot;</span>)[<span class="number">0</span>], Integer.parseInt(word.split(<span class="string">&quot;,&quot;</span>)[<span class="number">1</span>])),</span><br><span class="line">        Types.TUPLE(Types.STRING, Types.INT))</span><br><span class="line">    .keyBy(tuple2 -&gt; tuple2.f0)</span><br><span class="line">    .countWindow(<span class="number">3</span>)</span><br><span class="line">    .aggregate(<span class="keyword">new</span> <span class="title class_">AggregateFunction</span>&lt;Tuple2&lt;String, Integer&gt;, Tuple2&lt;Integer, Integer&gt;, Double&gt;() &#123;</span><br><span class="line">    <span class="comment">// 创建一个累加器，每个聚合任务只会调用一次</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Tuple2&lt;Integer, Integer&gt; <span class="title function_">createAccumulator</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Tuple2.of(<span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 将输入的元素添加到累加器中，返回一个新的累加器值 acc(sum, count)</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Tuple2&lt;Integer, Integer&gt; <span class="title function_">add</span><span class="params">(Tuple2&lt;String, Integer&gt; input, Tuple2&lt;Integer, Integer&gt; acc)</span> &#123;</span><br><span class="line">        acc.f0 = acc.f0 + input.f1;</span><br><span class="line">        acc.f1 ++;</span><br><span class="line">        <span class="keyword">return</span> acc;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从累加器中提取聚合的输出结果 基于聚合的结果计算出一个最终的结果进行输出</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Double <span class="title function_">getResult</span><span class="params">(Tuple2&lt;Integer, Integer&gt; acc)</span> &#123;</span><br><span class="line">        <span class="comment">// 判断除数不能为0</span></span><br><span class="line">        <span class="keyword">if</span> (acc.f1 == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0.0</span>;</span><br><span class="line">        <span class="keyword">return</span> acc.f0 * <span class="number">1.0</span> / acc.f1;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 合并两个累加器，将合并后的状态作为一个累加器返回。这个方法只在需要合并窗口的场景下才会被调用</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Tuple2&lt;Integer, Integer&gt; <span class="title function_">merge</span><span class="params">(Tuple2&lt;Integer, Integer&gt; window1, Tuple2&lt;Integer, Integer&gt; window2)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;).print(<span class="string">&quot;CountWindow Tumbling &quot;</span>).setParallelism(<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<h4 id="全量窗口函数"><a href="#全量窗口函数" class="headerlink" title="全量窗口函数"></a>全量窗口函数</h4><p>​	ProcessWindowFunction 是 Window API 中最底层的通用窗口函数接口。之所以说它“最底层”，是因为除了可以拿到窗口中的所有数据之外，ProcessWindowFunction 还可以获取到一个“上下文对象”（Context）。<strong>上下文对象非常强大，不仅能够获取窗口信息，还可以访问当前的时间和状态信息。这里的时间就包括了处理时间（processing time）和事件时间水位线（eventtime watermark）</strong>。</p>
+<p>​	全量窗口的好处是以牺牲性能和资源为代价的。作为一个全窗口函数，ProcessWindowFunction 同样需要将所有数据缓存下来、等到窗口触发计算时才使用。它其实就是一个增强版的WindowFunction。</p>
+<h3 id="WaterMark"><a href="#WaterMark" class="headerlink" title="WaterMark"></a>WaterMark</h3><h4 id="内置水位线生成器"><a href="#内置水位线生成器" class="headerlink" title="内置水位线生成器"></a>内置水位线生成器</h4><p>​	WatermarkStrategy</p>
+<ul>
+<li>单调递增策略（forMonotonousTimestamps）</li>
+<li>固定乱序长度策略（forBoundedOutOfOrderness）</li>
+<li>不生成策略（noWatermarks）</li>
+</ul>
+<h4 id="自定义水位线"><a href="#自定义水位线" class="headerlink" title="自定义水位线"></a>自定义水位线</h4><p>​	<strong>implements WatermarkStrategy&lt;~&gt;</strong></p>
+<p>​	Flink有两种不同的生成水位线的方式：一种是周期性的（Periodic），另一种是定点式的（Punctuated）。</p>
+<p>​	周期性的（Periodic）：周期性调用的方法中发出水位线 ，Periodic Generator周期性生成器一般是通过 onEvent() 观察判断输入的事件，而在 onPeriodicEmit()里发出水位线</p>
+<p>​	定点式的（Punctuated）：在事件触发的方法中发出水位线</p>
+<p>​	Punctuated Generator 定点式生成器会不停地检测 onEvent() 中的事件，当发现带有水位线信息的特殊事件时，就立即发出水位线。</p>
+<p>​	WatermarkGenerator 接口中有两个方法：</p>
+<ul>
+<li>onEvent()：在每个事件到来时调用</li>
+<li>onPeriodicEmit()：由框架周期性调用</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="https://jacbo-emm.github.io">wtw</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://jacbo-emm.github.io/post/6fca1b0d.html">https://jacbo-emm.github.io/post/6fca1b0d.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://jacbo-emm.github.io" target="_blank">五条悟</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Flink%E5%AD%A6%E4%B9%A0/">Flink学习</a></div><div class="post_share"><div class="social-share" data-image="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/post/82ff8bac.html" title="Flink算子"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Flink算子</div></div></a></div><div class="next-post pull-right"><a href="/post/beed7eae.html" title="Flink任务调度"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Flink任务调度</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/post/70157d97.html" title="Flink编程模型"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-19</div><div class="title">Flink编程模型</div></div></a></div><div><a href="/post/beed7eae.html" title="Flink任务调度"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-19</div><div class="title">Flink任务调度</div></div></a></div><div><a href="/post/82ff8bac.html" title="Flink算子"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-20</div><div class="title">Flink算子</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">wtw</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">4</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Window-Functions"><span class="toc-number">1.</span> <span class="toc-text">Window Functions</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A2%9E%E9%87%8F%E8%81%9A%E5%90%88%E5%87%BD%E6%95%B0"><span class="toc-number">1.1.</span> <span class="toc-text">增量聚合函数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%A8%E9%87%8F%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0"><span class="toc-number">1.2.</span> <span class="toc-text">全量窗口函数</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#WaterMark"><span class="toc-number">2.</span> <span class="toc-text">WaterMark</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%86%85%E7%BD%AE%E6%B0%B4%E4%BD%8D%E7%BA%BF%E7%94%9F%E6%88%90%E5%99%A8"><span class="toc-number">2.1.</span> <span class="toc-text">内置水位线生成器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B0%B4%E4%BD%8D%E7%BA%BF"><span class="toc-number">2.2.</span> <span class="toc-text">自定义水位线</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/post/82ff8bac.html" title="Flink算子">Flink算子</a><time datetime="2021-04-20T11:32:00.000Z" title="发表于 2021-04-20 19:32:00">2021-04-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/post/6fca1b0d.html" title="Flink窗口机制">Flink窗口机制</a><time datetime="2021-04-19T11:37:47.000Z" title="发表于 2021-04-19 19:37:47">2021-04-19</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/post/beed7eae.html" title="Flink任务调度">Flink任务调度</a><time datetime="2021-04-19T03:10:22.000Z" title="发表于 2021-04-19 11:10:22">2021-04-19</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/post/70157d97.html" title="Flink编程模型">Flink编程模型</a><time datetime="2021-04-19T02:16:25.000Z" title="发表于 2021-04-19 10:16:25">2021-04-19</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By wtw</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
