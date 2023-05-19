@@ -4,13 +4,19 @@
   
     
     <entry>
-      <title>Hello World</title>
-      <link href="/post/4a17b156.html"/>
-      <url>/post/4a17b156.html</url>
+      <title>Flink简介</title>
+      <link href="/post/d80ef286.html"/>
+      <url>/post/d80ef286.html</url>
       
-        <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>]]></content>
+        <content type="html"><![CDATA[<h3 id="Flink简介"><a href="#Flink简介" class="headerlink" title="Flink简介"></a>Flink简介</h3><p>​Apache Flink是一个面向数据流处理和批量数据处理的可分布式的开源计算框架，它基于同一个Flink流式执行模型（streaming execution model），能够支持流处理和批处理两种应用类型。Flink框架比传统的批处理框架有更高的性能和更低的延迟，并且可以提供支持事件时间（event time）的精确一次性处理（exactly-once processing）的保证。Flink还采用了基于内存的操作，这样就可以把数据操作在内存中，避免了磁盘I&#x2F;O带来的性能问题。Flink通过第三方库将机器学习模型嵌入到流处理中，从而支持机器学习对实时数据进行处理。Flink的使用也比较灵活，它支持多种数据源和格式，并且能够与各种数据库和存储系统集成。</p><p><img src="C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20230408172208910.png" alt="image-20230408172208910"></p>]]></content>
       
       
+      
+        <tags>
+            
+            <tag> Flink学习 </tag>
+            
+        </tags>
       
     </entry>
     
