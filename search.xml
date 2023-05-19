@@ -23,6 +23,25 @@
     
     
     <entry>
+      <title>Flink状态</title>
+      <link href="/post/e6ec0e77.html"/>
+      <url>/post/e6ec0e77.html</url>
+      
+        <content type="html"><![CDATA[<h3 id="Flink状态"><a href="#Flink状态" class="headerlink" title="Flink状态"></a>Flink状态</h3><h4 id="状态定义"><a href="#状态定义" class="headerlink" title="状态定义"></a>状态定义</h4><p>​<strong>无状态算子：</strong></p><p>​无状态的算子任务只需要观察每个独立事件，根据当前输入的数据直接转换输出结果。如map、filter、flatMap，计算时不依赖其他数据，就都属于无状态的算子。</p><p>​<strong>有状态算子：</strong></p><p>​当前数据之外，还需要一些其他数据来得到计算结果。这里的“其他数据”，就是所谓的状态（state）比如，做求和（sum）计算时，需要保存之前所有数据的和，这就是状态；</p><p>​实时任务失败：重启任务，然后重新读一遍输入数据，最后把昨天数据重新计算一遍就不可以了？因为实时任务第一重要的就是时效性，很明显重新计算违背了时效性原则。</p><h4 id="托管方式"><a href="#托管方式" class="headerlink" title="托管方式"></a>托管方式</h4><table><thead><tr><th></th><th>Managed State</th><th>Raw State</th></tr></thead><tbody><tr><td>状态管理方式</td><td>Flink Runtime托管，自动存储、自动恢复，内存管理上有优化</td><td>用户自己管理,需要自己进行序列化</td></tr><tr><td>数据结构</td><td>Flink提供的常用数据结构,如ListState、MapState、ValueState等</td><td>字节数组: byte[]</td></tr><tr><td>使用场景</td><td>大多数情况下均可使用</td><td>自定义 Operator 时</td></tr></tbody></table><p>Raw State ：只有在遇到托管状态无法实现的特殊需求时，我们才会考虑使用原始状态；</p><h4 id="状态类型"><a href="#状态类型" class="headerlink" title="状态类型"></a>状态类型</h4><p>​在Flink中，一个算子任务会按照并行度分为多个并行子任务执行，而不同的子任务会占据不同的任务槽（task slot）。由于不同的slot在计算资源上是物理隔离的，所以Flink能管理的状态在并行任务间是无法共享的，每个状态只能针对当前子任务的实例有效。</p><p>​而很多有状态的操作（比如聚合、窗口）都是要先做keyBy进行按键分区的。按键分区之后，任务所进行的所有计算都应该只针对当前key有效，所以状态也应该按照key彼此隔离。在这种情况下，状态的访问方式又会有所不同。基于这样的想法，我们又可以将托管状态分为两类：算子状态和按键分区状态。</p><table><thead><tr><th></th><th>Keyed State</th><th>Operator State</th></tr></thead><tbody><tr><td>使用范围</td><td>只能用于KeyedStream算子中使用，每个Key对应一个state</td><td>可以用于所有算子，常用与Source，比如FlinkKafkaConsumer，一个Operator实例对应一个state</td></tr><tr><td>扩缩容模式</td><td>Flink把所有键值分为不同的 Key Group，的最小单元。并发改变时，Flink会以KeyGroup为单位将键值分配给不同的任务。</td><td>当并发改变时，有多种方式来进行重分BroadcastState会把状态拷贝到全部新任务上。</td></tr><tr><td>访问方式</td><td>实现Rich Function，通过getRuntimeContext()返回的RuntimeContext进行获取</td><td>实现CheckpointedFunction或者ListCheckpoint的接口</td></tr><tr><td>数据结构</td><td>ValueState、ListState、 ReducingState.AggregatingState 、MapState</td><td>ListState、BroadcastState</td></tr></tbody></table><p>算子状态(Operator State)：</p><p>​算子状态可以用在所有算子上，使用的时候其实就跟一个本地变量没什么区别，因为本地变量的作用域也是当前任务实例。在使用时，我们还需进一步实现CheckpointedFunction接口。</p><p> <strong>键分区状态(Keyed State)：</strong></p><p>状态是根据输入流中定义的键（key）来维护和访问的，所以只能定义在按键分区流（KeyedStream）中，也就是聚合算子必须在keyBy之后才能使用，因为聚合的结果是以Keyed State的形式保存的。</p><h4 id="状态后端"><a href="#状态后端" class="headerlink" title="状态后端"></a>状态后端</h4><p>一个 State Backend 主要负责两件事：Local State Management(本地状态管理) 和 Remote State Checkpointing（远程状态备份）。</p><p>​<strong>Local State Management：</strong></p><p>​1、Local State Management 主要任务是确保状态的更新和访问。</p><p>​2、Local State Management 主要有两种形式的状态管理：</p><p>​① 直接将 State 以对象的形式存储到JVM的堆上面，因为是在内存中读写，延迟会很低，但State的大小受限于内存的大小</p><p>​② 将 State 对象序列化后存储到 RocksDB 中，读写较内存会慢一些，但不受内存大小的限制，同时因为state存储在磁盘上，可以减少应用程序对内存的占用</p><p>​<strong>Remote State Checkpointing：</strong></p><p>​Flink程序是分布式运行的，而State都是存储到各个节点上的，一旦TaskManager节点出现问题，就会导致State的丢失。State Backend 提供了 State Checkpointing 的功能，将 TaskManager 本地的 State 的备份到远程的存储介质上，可以是分布式的存储系统或者数据库。不同的 State Backends 备份的方式不同，会有效率高低的区别。</p><p>​Remote State Checkpointing 的主要作用包括在每一个TaskManager节点上存储和管理状态，将状态进行远程备份两个部分。</p><p><strong>Flink-1.13 版及以前存储方式：</strong></p><p><strong>Flink-1.13 版及以后存储方式：</strong></p><p>​<strong>HashMapStateBackend</strong>（默认），FsStateBackend 和 MemoryStateBackend 整合成了 HashMapStateBackend存储管理状态类似于管理一个Java堆中的对象，key&#x2F;value 的状态和窗口操作都会在一个 hash table 中进行存储状态。默认情况下，每一个状态最大为 5 MB。可以通过 MemoryStateBackend 的构造函数增加最大大小。内存空间不够时，也会溢出一部分数据到本地磁盘文件；可以支撑大规模的状态数据，只不过在状态数据规模超出内存空间时，读写效率就会明显降低。</p><p>​<strong>EmbeddedRocksDBStateBackend</strong>，该状态后端存储管理状态在RocksDB数据库中，该状态存储在本地 TaskManager的磁盘目录。该状态后端按照指定的类型序列化后变成字节数组将数据存储在磁盘，按照key的字典序排列。RocksDB 的每个 key 和 value 的最大大小为 2^31 字节。这是因为 RocksDB 的 JNI API 是基于 byte[] 的。Rockdb 中的数据，有内存缓存的部分，也有磁盘文件的部分；Rockdb 的磁盘文件数据读写速度相对还是比较快的，所以在支持超大规模状态数据时，数据的读写效率不会有太大的降低。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> Flink学习 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Flink算子</title>
       <link href="/post/82ff8bac.html"/>
       <url>/post/82ff8bac.html</url>
