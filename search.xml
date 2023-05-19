@@ -2,44 +2,6 @@
 <search> 
   
   
-    
-    <entry>
-      <title>Flink编程模型</title>
-      <link href="/post/70157d97.html"/>
-      <url>/post/70157d97.html</url>
-      
-        <content type="html"><![CDATA[<h3 id="Flink编程模型"><a href="#Flink编程模型" class="headerlink" title="Flink编程模型"></a>Flink编程模型</h3><h4 id="分层API"><a href="#分层API" class="headerlink" title="分层API"></a>分层API</h4><p><img src="C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20230408173107441.png" alt="image-20230408173107441"></p><p>1、ProcessFunction</p><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyProcessFunction</span> <span class="keyword">extends</span> <span class="title class_">ProcessFunction</span>&lt;String, String&gt; &#123;</span><br><span class="line">    <span class="keyword">private</span> ValueState&lt;Integer&gt; count = <span class="literal">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">open</span><span class="params">(Configuration parameters)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        ValueStateDescriptor&lt;Integer&gt; descriptor = <span class="keyword">new</span> <span class="title class_">ValueStateDescriptor</span>&lt;&gt;(<span class="string">&quot;count&quot;</span>, Integer.class);</span><br><span class="line">        count = getRuntimeContext().getState(descriptor);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">processElement</span><span class="params">(String value, Context ctx, Collector&lt;String&gt; out)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">Integer</span> <span class="variable">currentCount</span> <span class="operator">=</span> count.value();</span><br><span class="line">        <span class="keyword">if</span> (currentCount == <span class="literal">null</span>) &#123;</span><br><span class="line">            currentCount = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        currentCount += <span class="number">1</span>;</span><br><span class="line">        count.update(currentCount);</span><br><span class="line">        out.collect(<span class="string">&quot;Input: &quot;</span> + value + <span class="string">&quot;, Count: &quot;</span> + currentCount);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>2、DataStream API</p><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">DataStream&lt;String&gt; input = env.addSource(<span class="keyword">new</span> <span class="title class_">FlinkKafkaConsumer</span>&lt;&gt;(<span class="string">&quot;input-topic&quot;</span>, <span class="keyword">new</span> <span class="title class_">SimpleStringSchema</span>(), properties));</span><br><span class="line">DataStream&lt;Tuple2&lt;String, Integer&gt;&gt; result = input.flatMap(<span class="keyword">new</span> <span class="title class_">FlatMapFunction</span>&lt;String, Tuple2&lt;String, Integer&gt;&gt;() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">flatMap</span><span class="params">(String value, Collector&lt;Tuple2&lt;String, Integer&gt;&gt; out)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="keyword">for</span> (String word : value.split(<span class="string">&quot;\\s&quot;</span>)) &#123;</span><br><span class="line">            out.collect(<span class="keyword">new</span> <span class="title class_">Tuple2</span>&lt;&gt;(word, <span class="number">1</span>));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;).keyBy(<span class="number">0</span>).sum(<span class="number">1</span>);</span><br><span class="line">result.print();</span><br></pre></td></tr></table></figure><p>3、SQL &amp; Table API</p><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">TableEnvironment</span> <span class="variable">tableEnv</span> <span class="operator">=</span> TableEnvironment.create(env);</span><br><span class="line"></span><br><span class="line"><span class="comment">// register a table named &quot;input&quot;</span></span><br><span class="line">DataStreamSource&lt;Tuple2&lt;String, Integer&gt;&gt; input = env.fromElements(<span class="keyword">new</span> <span class="title class_">Tuple2</span>&lt;&gt;(<span class="string">&quot;a&quot;</span>, <span class="number">1</span>), <span class="keyword">new</span> <span class="title class_">Tuple2</span>&lt;&gt;(<span class="string">&quot;b&quot;</span>, <span class="number">2</span>));</span><br><span class="line">tableEnv.registerDataStream(<span class="string">&quot;input&quot;</span>, input, $(<span class="string">&quot;word&quot;</span>), $(<span class="string">&quot;frequency&quot;</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">// execute a SQL query</span></span><br><span class="line"><span class="type">Table</span> <span class="variable">result</span> <span class="operator">=</span> tableEnv.sqlQuery(<span class="string">&quot;SELECT word, SUM(frequency) as frequency FROM input GROUP BY word&quot;</span>);</span><br><span class="line">DataStream&lt;Tuple2&lt;Boolean, Row&gt;&gt; resultStream = tableEnv.toRetractStream(result, Row.class);</span><br><span class="line">resultStream.print();</span><br></pre></td></tr></table></figure><h4 id="编程模型"><a href="#编程模型" class="headerlink" title="编程模型"></a>编程模型</h4><p><img src="C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20230408174130230.png" alt="image-20230408174130230"></p>]]></content>
-      
-      
-      
-        <tags>
-            
-            <tag> Flink学习 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>Flink简介</title>
-      <link href="/post/d80ef286.html"/>
-      <url>/post/d80ef286.html</url>
-      
-        <content type="html"><![CDATA[<h3 id="Flink简介"><a href="#Flink简介" class="headerlink" title="Flink简介"></a>Flink简介</h3><p>​Apache Flink是一个面向数据流处理和批量数据处理的可分布式的开源计算框架，它基于同一个Flink流式执行模型（streaming execution model），能够支持流处理和批处理两种应用类型。Flink框架比传统的批处理框架有更高的性能和更低的延迟，并且可以提供支持事件时间（event time）的精确一次性处理（exactly-once processing）的保证。Flink还采用了基于内存的操作，这样就可以把数据操作在内存中，避免了磁盘I&#x2F;O带来的性能问题。Flink通过第三方库将机器学习模型嵌入到流处理中，从而支持机器学习对实时数据进行处理。Flink的使用也比较灵活，它支持多种数据源和格式，并且能够与各种数据库和存储系统集成。</p><p><img src="C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20230408172208910.png" alt="image-20230408172208910"></p>]]></content>
-      
-      
-      
-        <tags>
-            
-            <tag> Flink学习 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
   
   
 </search>
